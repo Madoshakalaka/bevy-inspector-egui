@@ -31,7 +31,7 @@ bevy_ui = ["bevy/bevy_ui"]
 
 [dependencies]
 bevy = { git = "https://github.com/bevyengine/bevy.git", default-features = false, features = ["bevy_render", "bevy_core_pipeline"] }
-bevy_egui = { git="https://github.com/Madoshakalaka/bevy_egui", default-features = false, features = ["open_url"], rev="aa35c037da693cc93e2f968c7176e23784c0c208"}
+bevy_egui = { git="https://github.com/Madoshakalaka/bevy_egui", default-features = false, features = ["open_url"]}
 pretty-type-name = "1.0"
 image = { version = "0.23", default-features = false }
 nalgebra031 = { package = "nalgebra", version = "0.31", optional = true }
