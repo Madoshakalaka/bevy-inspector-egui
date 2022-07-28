@@ -9,6 +9,8 @@ use bevy::render::view::VisibleEntities;
 use bevy::utils::HashMap;
 use bevy_egui::egui;
 use std::any::{Any, TypeId};
+use std::ptr::NonNull;
+use bevy::ptr::{Ptr, PtrMut};
 
 pub(crate) type InspectCallback =
     Box<dyn Fn(*mut u8, &mut egui::Ui, &mut Context) -> bool + Send + Sync>;
@@ -111,7 +113,6 @@ impl Default for InspectableRegistry {
         register!(this IVec2, IVec3, IVec4, UVec2, UVec3, Vec2, DVec2, DVec3, DVec4, Vec3, Vec3A, Vec4, Mat3, Mat4, Quat);
         register!(this u8, u16, u32, u64, usize, i8, i16, i32, i64, isize, bool, f32, f64, String);
         this.register::<Transform>();
-        this.register::<GlobalTransform>();
 
         this.register::<std::ops::Range<f32>>();
         this.register::<std::time::Duration>();
@@ -122,11 +123,9 @@ impl Default for InspectableRegistry {
         {
             use bevy::pbr::{Clusters, CubemapVisibleEntities, VisiblePointLights};
 
-            this.register::<DirectionalLight>();
             this.register::<VisiblePointLights>();
             this.register::<CubemapVisibleEntities>();
             this.register::<Clusters>();
-            this.register::<PointLight>();
             this.register::<StandardMaterial>();
             this.register::<Handle<StandardMaterial>>();
             this.register::<AmbientLight>();
@@ -151,7 +150,6 @@ impl Default for InspectableRegistry {
 
         #[cfg(feature = "bevy_ui")]
         {
-            register!(this Display, Style, Size<f32>, Size<Val>, Val, bevy::ui::FocusPolicy);
             register!(this PositionType, Direction, FlexDirection, FlexWrap, AlignItems, AlignSelf, JustifyContent);
         }
 
@@ -159,7 +157,6 @@ impl Default for InspectableRegistry {
         this.register::<bevy::render::view::RenderLayers>();
 
         this.register::<WindowOrigin>();
-        this.register::<ScalingMode>();
         this.register::<DepthCalculation>();
         this.register::<VisibleEntities>();
         this.register::<CubemapFrusta>();

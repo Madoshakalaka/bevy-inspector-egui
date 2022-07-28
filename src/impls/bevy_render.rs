@@ -13,19 +13,6 @@ use crate::{utils, Context, Inspectable};
 
 use super::NumberAttributes;
 
-impl_for_struct_delegate_fields!(
-    OrthographicProjection:
-    left,
-    right,
-    bottom,
-    top,
-    near,
-    far,
-    window_origin,
-    scaling_mode,
-    scale with NumberAttributes::positive(),
-    depth_calculation
-);
 
 impl_for_simple_enum!(
     PrimitiveTopology: PointList,
@@ -36,12 +23,6 @@ impl_for_simple_enum!(
 );
 
 impl_for_simple_enum!(WindowOrigin: Center, BottomLeft);
-impl_for_simple_enum!(
-    ScalingMode: None,
-    WindowSize,
-    FixedVertical,
-    FixedHorizontal
-);
 impl_for_simple_enum!(DepthCalculation: Distance, ZDifference);
 
 //////// SHAPES ////////

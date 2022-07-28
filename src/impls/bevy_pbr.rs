@@ -13,25 +13,7 @@ use crate::{Context, Inspectable};
 
 use super::{NumberAttributes, OptionAttributes};
 
-impl_for_struct_delegate_fields!(
-    PointLight:
-    color,
-    intensity with NumberAttributes::positive().with_speed(1.0),
-    range with NumberAttributes::positive(),
-    radius with NumberAttributes::positive(),
-    shadows_enabled,
-    shadow_depth_bias with NumberAttributes::positive(),
-    shadow_normal_bias with NumberAttributes::positive(),
-);
 
-impl_for_struct_delegate_fields!(
-    DirectionalLight: color,
-    illuminance with NumberAttributes::positive(),
-    shadows_enabled,
-    shadow_projection,
-    shadow_depth_bias with NumberAttributes::positive(),
-    shadow_normal_bias with NumberAttributes::positive(),
-);
 
 impl Inspectable for AmbientLight {
     type Attributes = <Color as Inspectable>::Attributes;

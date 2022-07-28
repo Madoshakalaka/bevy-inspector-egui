@@ -1,7 +1,7 @@
 use super::{WorldInspectorParams, WorldUIContext};
 use crate::Inspectable;
 use bevy::{
-    ecs::query::{Fetch, FilterFetch, WorldQuery},
+    ecs::query::{Fetch, WorldQuery},
     prelude::*,
 };
 use bevy_egui::egui::CollapsingHeader;
@@ -100,55 +100,16 @@ impl<Q, F> Default for InspectorQuery<Q, F> {
     }
 }
 
-type WorldQueryItem<'w, 's, Q> = <<Q as WorldQuery>::Fetch as Fetch<'w, 's>>::Item;
+type WorldQueryItem<'w, Q>  = <<Q as WorldQuery>::State as Fetch<'w>>::Item;
 
-unsafe fn extend_lifetime<'w, 's, Q>(
-    item: &<WorldQueryItem<'static, 'static, Q> as Inspectable>::Attributes,
-) -> <WorldQueryItem<'w, 's, Q> as Inspectable>::Attributes
+unsafe fn extend_lifetime<'w,  Q>(
+    item: &<WorldQueryItem<'static, Q> as Inspectable>::Attributes,
+) -> <WorldQueryItem<'w,  Q> as Inspectable>::Attributes
 where
     Q: WorldQuery,
-    for<'world, 'state> WorldQueryItem<'world, 'state, Q>: Inspectable,
+    for<'world> WorldQueryItem<'world,  Q>: Inspectable, for<'world> <Q as WorldQuery>::State: Fetch<'world>
 {
     std::mem::transmute_copy(item)
-}
-
-impl<Q: 'static, F: 'static> Inspectable for InspectorQuery<Q, F>
-where
-    Q: WorldQuery,
-    F: WorldQuery,
-    F::Fetch: FilterFetch,
-    for<'w, 's> WorldQueryItem<'w, 's, Q>: Inspectable,
-{
-    type Attributes = <WorldQueryItem<'static, 'static, Q> as Inspectable>::Attributes;
-
-    fn ui(
-        &mut self,
-        ui: &mut bevy_egui::egui::Ui,
-        options: Self::Attributes,
-        context: &mut crate::Context,
-    ) -> bool {
-        unsafe {
-            context.world_scope_unchecked(ui, "InspectorQuery", |world, ui, context| {
-                let mut changed = false;
-
-                ui.vertical(move |ui| {
-                    let mut query_state = world.query_filtered::<Q, F>();
-
-                    for (i, mut value) in query_state.iter_mut(world).enumerate() {
-                        let name = pretty_type_name::pretty_type_name::<Q>();
-                        CollapsingHeader::new(name)
-                            .id_source(context.id().with(i))
-                            .show(ui, |ui| {
-                                let options = extend_lifetime::<Q>(&options);
-                                changed |= value.ui(ui, options, &mut context.with_id(i as u64));
-                            });
-                    }
-                });
-
-                changed
-            })
-        }
-    }
 }
 
 /// Executes [Queries](bevy::ecs::system::Query) and displays the only result.
@@ -181,54 +142,5 @@ pub struct InspectorQuerySingle<Q, F = ()>(PhantomData<(Q, F)>);
 impl<Q, F> Default for InspectorQuerySingle<Q, F> {
     fn default() -> Self {
         InspectorQuerySingle(PhantomData)
-    }
-}
-
-impl<Q, F> Inspectable for InspectorQuerySingle<Q, F>
-where
-    Q: WorldQuery + 'static,
-    F: WorldQuery + 'static,
-    F::Fetch: FilterFetch,
-    for<'w, 's> WorldQueryItem<'w, 's, Q>: Inspectable,
-{
-    type Attributes = <WorldQueryItem<'static, 'static, Q> as Inspectable>::Attributes;
-
-    fn ui(
-        &mut self,
-        ui: &mut bevy_egui::egui::Ui,
-        options: Self::Attributes,
-        context: &mut crate::Context,
-    ) -> bool {
-        unsafe {
-            context.world_scope_unchecked(ui, "InspectorQuerySingle", |world, ui, context| {
-                let mut changed = false;
-                ui.vertical(move |ui| {
-                    let mut query_state = world.query_filtered::<Q, F>();
-                    let mut iter = query_state.iter_mut(world);
-                    let value = iter.next();
-                    let has_more = iter.next().is_some();
-
-                    match (value, has_more) {
-                        (None, _) => {
-                            ui.label("No entity matches the query.");
-                        }
-                        (Some(_), true) => {
-                            ui.label("More than one entity matches the query.");
-                        }
-                        (Some(mut value), false) => {
-                            let name = pretty_type_name::pretty_type_name::<Q>();
-                            CollapsingHeader::new(name)
-                                .id_source(context.id())
-                                .show(ui, |ui| {
-                                    let options = extend_lifetime::<Q>(&options);
-                                    changed |= value.ui(ui, options, context);
-                                });
-                        }
-                    };
-                });
-
-                changed
-            })
-        }
     }
 }

@@ -5,7 +5,6 @@ mod plugin;
 use bevy::{
     ecs::archetype::Archetype,
     reflect::TypeRegistration,
-    render::camera::{Camera2d, Camera3d},
     window::WindowId,
 };
 pub use inspectable_registry::InspectableRegistry;
@@ -15,7 +14,7 @@ use bevy::{
     ecs::{
         component::{ComponentId, ComponentTicks, StorageType},
         entity::EntityLocation,
-        query::{FilterFetch, WorldQuery},
+        query::{WorldQuery},
         world::EntityRef,
     },
     prelude::*,
@@ -26,6 +25,8 @@ use bevy_egui::egui::{self, Color32};
 use egui::{epaint::FontId, CollapsingHeader};
 use pretty_type_name::pretty_type_name_str;
 use std::{any::TypeId, cell::Cell};
+use std::cell::UnsafeCell;
+use bevy::ptr::{Ptr, PtrMut, UnsafeCellDeref};
 
 use crate::{utils::ui::label_button, Context};
 use impls::EntityAttributes;
@@ -101,7 +102,6 @@ impl Default for WorldInspectorParams {
             TypeId::of::<Name>(),
             TypeId::of::<Children>(),
             TypeId::of::<Parent>(),
-            TypeId::of::<PreviousParent>(),
         ]
         .iter()
         .copied()
@@ -141,7 +141,6 @@ impl<'a> WorldUIContext<'a> {
     pub fn world_ui<F>(&mut self, ui: &mut egui::Ui, params: &mut WorldInspectorParams) -> bool
     where
         F: WorldQuery,
-        F::Fetch: FilterFetch,
     {
         let mut root_entities = self.world.query_filtered::<Entity, (Without<Parent>, F)>();
 
@@ -195,7 +194,9 @@ impl<'a> WorldUIContext<'a> {
                 .body_returned
                 .unwrap_or(false)
         } else {
-            let children = self.world.get::<Children>(entity).cloned();
+            let children = self.world.get::<Children>(entity).map(|c|{
+                c.iter().cloned().collect::<Vec<_>>()
+            });
             if let Some(children) = children {
                 for &child in children.iter() {
                     self.entity_ui(ui, child, params, id.with(child), entity_options);
@@ -235,7 +236,9 @@ impl<'a> WorldUIContext<'a> {
 
         ui.separator();
 
-        let children = self.world.get::<Children>(entity).cloned();
+        let children = self.world.get::<Children>(entity).map(|c|{
+            c.iter().cloned().collect::<Vec<_>>()
+        });
         if let Some(children) = children {
             ui.label("Children");
             for &child in children.iter() {
@@ -510,7 +513,7 @@ fn display_by_reflection(
     let mut reflected = {
         let world = unsafe { &mut *(world as *mut _) };
         reflect_component
-            .reflect_component_mut(world, entity)
+            .reflect_mut(world, entity)
             .ok_or(())?
     };
 
@@ -587,15 +590,18 @@ unsafe fn get_component_and_ticks(
             let table_row = archetype.entity_table_row(location.index);
             // SAFE: archetypes only store valid table_rows and the stored component type is T
             Some((
-                components.get_data_unchecked(table_row),
-                components.get_ticks_mut_ptr_unchecked(table_row),
+                components.get_data_unchecked(table_row).as_ptr(),
+                components.get_ticks_unchecked(table_row).get(),
             ))
         }
         StorageType::SparseSet => world
             .storages()
             .sparse_sets
             .get(component_id)
-            .and_then(|sparse_set| sparse_set.get_with_ticks(entity)),
+            .and_then(|sparse_set| sparse_set.get_with_ticks(entity))
+            .map(|(ptr, ticks)|{
+                (ptr.as_ptr(), ticks.get())
+            }),
     }
 }
 
@@ -626,10 +632,6 @@ fn guess_entity_name_inner(entity: EntityRef) -> String {
     }
     if entity.get::<Camera2d>().is_some() {
         return format!("Camera2d ({})", id);
-    }
-    #[cfg(feature = "bevy_ui")]
-    if entity.get::<bevy::ui::entity::CameraUi>().is_some() {
-        return format!("CameraUi ({})", id);
     }
 
     #[cfg(feature = "bevy_pbr")]

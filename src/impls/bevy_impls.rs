@@ -40,30 +40,6 @@ impl Inspectable for Transform {
     }
 }
 
-impl Inspectable for GlobalTransform {
-    type Attributes = <Transform as Inspectable>::Attributes;
-
-    fn ui(&mut self, ui: &mut egui::Ui, options: Self::Attributes, context: &mut Context) -> bool {
-        let global_transform = std::mem::take(self);
-
-        let mut transform = Transform {
-            translation: global_transform.translation,
-            rotation: global_transform.rotation,
-            scale: global_transform.scale,
-        };
-
-        let changed = transform.ui(ui, options, context);
-
-        *self = GlobalTransform {
-            translation: transform.translation,
-            rotation: transform.rotation,
-            scale: transform.scale,
-        };
-
-        changed
-    }
-}
-
 impl Inspectable for Name {
     type Attributes = ();
 
